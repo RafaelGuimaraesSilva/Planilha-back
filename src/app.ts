@@ -4,6 +4,7 @@ import { testConnection } from './db';
 
 // Importar as rotas
 import clientesRoutes from './routes/ClientesRoutes';
+import planilhaRouter from './controllers/planilhaRouter';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.get('/health', async (req: Request, res: Response) => {
 
 // Rotas da aplicação
 app.use('/api/clientes', clientesRoutes);
+app.use('/planilha', planilhaRouter);
 
 // Iniciar servidor
 app.listen(PORT, async () => {

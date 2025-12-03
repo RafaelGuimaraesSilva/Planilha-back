@@ -4,7 +4,6 @@ import { ClienteService } from '../services/ClienteService';
 const router = Router();
 const clienteService = new ClienteService();
 
-// GET /api/clientes - Listar todos os clientes
 router.get('/', async (req: Request, res: Response) => {
   try {
     const clientes = await clienteService.getAllClientes();
@@ -22,7 +21,6 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/clientes/:id - Buscar cliente por ID
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -56,7 +54,6 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/clientes - Criar novo cliente
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { nome, email, telefone } = req.body;
@@ -76,7 +73,6 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/clientes/:id - Atualizar cliente
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -112,7 +108,6 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/clientes/:id - Deletar cliente
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
