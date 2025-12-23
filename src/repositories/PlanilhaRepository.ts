@@ -1,36 +1,84 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { PlanilhaItem, CreatePlanilhaItemDTO } from '../models/PlanilhaItem';
-
-const DATA_FILE = path.resolve(__dirname, '../../data/planilha.json');
+import { db } from '../db'; // ajuste o caminho se seu export do client Drizzle estiver em outro arquivo
+import { planilhaItems } from '../db/schema';
+import type { NewPlanilhaItem } from '../db/schema';
+import type { PlanilhaItem as ModelPlanilhaItem, CreatePlanilhaItemDTO as ModelCreateDTO } from '../models/PlanilhaItem';
 
 export class PlanilhaRepository {
-  private async readAll(): Promise<PlanilhaItem[]> {
-    try {
-      const raw = await fs.readFile(DATA_FILE, 'utf8');
-      return JSON.parse(raw) as PlanilhaItem[];
-    } catch (err) {
-      if ((err as any).code === 'ENOENT') return [];
-      throw err;
-    }
+  
+  async findAll(): Promise<ModelPlanilhaItem[]> {
+    const result = await db.select().from(planilhaItems).orderBy(planilhaItems.id).execute();
+
+    return result.map(r => ({
+      id: r.id,
+      pdv: r.pdv ?? null,
+      produto: r.produto,
+      produtos: r.produtos ?? null,
+      funcionario: r.funcionario,
+      data: (r.data as Date).toISOString(),
+      controle: r.controle ?? null,
+      erro: r.erro ?? null,
+      valorDesconto: Number((r as any).valorDesconto),
+      observacao: r.observacao ?? null,
+      criadoEm: (r.criadoEm as Date).toISOString(),
+    }));
   }
 
-  private async writeAll(items: PlanilhaItem[]) {
-    await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-    await fs.writeFile(DATA_FILE, JSON.stringify(items, null, 2), 'utf8');
+  async createMany(dtos: ModelCreateDTO[]): Promise<ModelPlanilhaItem[]> {
+    if (!Array.isArray(dtos) || dtos.length === 0) return [];
+
+    const values: NewPlanilhaItem[] = dtos.map(i => ({
+      pdv: i.pdv ?? null,
+      produto: i.produto,
+      produtos: i.produtos ?? null,
+      funcionario: i.funcionario,
+      data: new Date(i.data),
+      controle: i.controle ?? null,
+      erro: i.erro ?? null,
+      // Drizzle numeric/decimal maps to string in inserts/returns for some drivers — stringify to be safe
+      valorDesconto: String(i.valorDesconto) as any,
+      observacao: i.observacao ?? null,
+    }));
+
+    const inserted = await db.transaction(async (tx) => {
+      const rows = await tx
+        .insert(planilhaItems)
+        .values(values)
+        .returning({
+          id: planilhaItems.id,
+          pdv: planilhaItems.pdv,
+          produto: planilhaItems.produto,
+          produtos: planilhaItems.produtos,
+          funcionario: planilhaItems.funcionario,
+          data: planilhaItems.data,
+          controle: planilhaItems.controle,
+          erro: planilhaItems.erro,
+          valorDesconto: planilhaItems.valorDesconto,
+          observacao: planilhaItems.observacao,
+          criadoEm: planilhaItems.criadoEm,
+        });
+      return rows;
+    });
+
+    return inserted.map(r => ({
+      id: r.id,
+      pdv: r.pdv ?? null,
+      produto: r.produto,
+      produtos: r.produtos ?? null,
+      funcionario: r.funcionario,
+      data: (r.data as Date).toISOString(),
+      controle: r.controle ?? null,
+      erro: r.erro ?? null,
+      valorDesconto: Number((r as any).valorDesconto),
+      observacao: r.observacao ?? null,
+      criadoEm: (r.criadoEm as Date).toISOString(),
+    }));
   }
 
-  async findAll(): Promise<PlanilhaItem[]> {
-    return this.readAll();
-  }
-
-  async createMany(items: CreatePlanilhaItemDTO[]): Promise<PlanilhaItem[]> {
-    const existing = await this.readAll();
-    let nextId = existing.length ? Math.max(...existing.map(i => i.id || 0)) + 1 : 1;
-    const now = new Date().toISOString();
-    const created = items.map(dto => ({ id: nextId++, criadoEm: now, ...dto }));
-    const all = existing.concat(created);
-    await this.writeAll(all);
-    return created;
+  async close(): Promise<void> {
+    // Atualmente não há export do client para encerrar a conexão; se futuramente exportarmos o client,
+    // aqui podemos chamar client.end() ou cleanup apropriado.
+    return Promise.resolve();
   }
 }
+
+export const planilhaRepository = new PlanilhaRepository();

@@ -1,23 +1,36 @@
-import express from 'express';
-import { PlanilhaService } from '../services/PlanilhaService';
+import { planilhaRepository } from '../repositories/PlanilhaRepository';
+import type { CreatePlanilhaItemDTO, PlanilhaItem } from '../models/PlanilhaItem';
 
-const router = express.Router();
-const service = new PlanilhaService();
-
-router.get('/items', async (req, res) => {
-  const items = await service.listAll();
-  res.json(items);
-});
-
-router.post('/items', async (req, res) => {
-  try {
-    const items = req.body.items;
-    if (!Array.isArray(items)) return res.status(400).json({ error: 'items deve ser um array' });
-    const created = await service.addMany(items);
-    res.status(201).json(created);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message || 'Erro' });
+export class PlanilhaService {
+  async listAll(): Promise<PlanilhaItem[]> {
+    return await planilhaRepository.findAll();
   }
-});
 
-export default router;
+  async addMany(items: CreatePlanilhaItemDTO[]): Promise<PlanilhaItem[]> {
+    if (!Array.isArray(items)) throw new Error('items deve ser um array');
+
+    // Validações básicas
+    const validated = items.map((i, idx) => {
+      if (!i.produto || !i.funcionario) {
+        throw new Error(`Item ${idx}: 'produto' e 'funcionario' são obrigatórios`);
+      }
+      if (typeof i.valorDesconto !== 'number' || Number.isNaN(i.valorDesconto)) {
+        throw new Error(`Item ${idx}: 'valorDesconto' deve ser um número`);
+      }
+      // Data precisa ser uma string parseável
+      const date = new Date(i.data);
+      if (isNaN(date.getTime())) {
+        throw new Error(`Item ${idx}: 'data' inválida`);
+      }
+      return {
+        ...i,
+        data: date.toISOString(),
+      } as CreatePlanilhaItemDTO;
+    });
+
+    const created = await planilhaRepository.createMany(validated);
+    return created;
+  }
+}
+
+export default new PlanilhaService();
