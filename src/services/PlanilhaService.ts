@@ -6,29 +6,25 @@ export class PlanilhaService {
     return await planilhaRepository.findAll();
   }
 
-  async addMany(items: CreatePlanilhaItemDTO[]): Promise<PlanilhaItem[]> {
-    if (!Array.isArray(items)) throw new Error('items deve ser um array');
+  async addOne(item: CreatePlanilhaItemDTO): Promise<PlanilhaItem> {
+    if (!item.produto || !item.funcionario) {
+      throw new Error("'produto' e 'funcionario' são obrigatórios");
+    }
+    if (typeof item.valorDesconto !== 'number' || Number.isNaN(item.valorDesconto)) {
+      throw new Error("'valorDesconto' deve ser um número");
+    }
+    // Data precisa ser uma string parseável
+    const date = new Date(item.data);
+    if (isNaN(date.getTime())) {
+      throw new Error("'data' inválida");
+    }
 
-    // Validações básicas
-    const validated = items.map((i, idx) => {
-      if (!i.produto || !i.funcionario) {
-        throw new Error(`Item ${idx}: 'produto' e 'funcionario' são obrigatórios`);
-      }
-      if (typeof i.valorDesconto !== 'number' || Number.isNaN(i.valorDesconto)) {
-        throw new Error(`Item ${idx}: 'valorDesconto' deve ser um número`);
-      }
-      // Data precisa ser uma string parseável
-      const date = new Date(i.data);
-      if (isNaN(date.getTime())) {
-        throw new Error(`Item ${idx}: 'data' inválida`);
-      }
-      return {
-        ...i,
-        data: date.toISOString(),
-      } as CreatePlanilhaItemDTO;
-    });
+    const validated: CreatePlanilhaItemDTO = {
+      ...item,
+      data: date.toISOString(),
+    };
 
-    const created = await planilhaRepository.createMany(validated);
+    const created = await planilhaRepository.create(validated);
     return created;
   }
 }

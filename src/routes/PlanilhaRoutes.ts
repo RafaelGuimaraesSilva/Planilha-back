@@ -22,23 +22,24 @@ router.get('/items', async (req: Request, res: Response) => {
 
 router.post('/items', async (req: Request, res: Response) => {
   try {
-    const items = req.body.items;
-    if (!Array.isArray(items)) {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') {
       return res.status(400).json({
         success: false,
-        message: 'items deve ser um array',
+        message: 'Body deve ser um objeto com os campos do item'
       });
     }
 
-    const createdItems = await planilhaService.addMany(items);
+    const createdItem = await planilhaService.addOne(payload);
     res.status(201).json({
       success: true,
-      data: createdItems,
+      data: createdItem,
     });
   } catch (error) {
-    res.status(500).json({
+    const isClientError = error instanceof Error && /obrigat|inválid|deve ser um número/i.test(error.message);
+    res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: 'Erro ao adicionar itens à planilha',
+      message: isClientError ? (error instanceof Error ? error.message : 'Erro de validação') : 'Erro ao adicionar item à planilha',
       error: error instanceof Error ? error.message : 'Erro desconhecido',
     });
   }
